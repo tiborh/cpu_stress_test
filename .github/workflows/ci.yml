@@ -8,16 +8,32 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+        cc: [gcc, clang]
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential gnuplot
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential gnuplot
+          if [ "${{ matrix.cc }}" = "clang" ]; then
+            sudo apt-get install -y clang
+          fi
 
       - name: Build
-        run: make
+        run: make CC=${{ matrix.cc }}
 
       - name: Smoke tests
         run: make check
+
+      - name: Verify dependency checker
+        run: ./check_build_deps.sh --build
+
+      - name: Verify gnuplot integration
+        run: make plot
