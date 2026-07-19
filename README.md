@@ -35,6 +35,7 @@ All project documentation lives in the [`doc/`](doc/) directory:
 | [doc/cpu_stress.md](doc/cpu_stress.md) | **Main documentation** — design, usage, and internals of every utility, build prerequisites, sensor configuration, portability notes, and the security audit. |
 | [doc/future_directions.md](doc/future_directions.md) | Ideas for additional stress modes targeting different CPU subsystems. |
 | [doc/CHANGELOG.md](doc/CHANGELOG.md) | Dated history of notable changes. |
+| [TODO.md](TODO.md) | Immediate tasks, pending work, and in-progress features. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Workflow, coding style, and commit guidelines for contributors. |
 
 ## Utilities
