@@ -11,19 +11,25 @@
 #   --run --fix       Audit + ask for fix suggestions in one shot.
 #   --fix             Read an existing report and ask the AI for fixes only.
 #   --fix --report F  Use a custom/edited report file as fix input.
+#   --clean           Re-run audit to verify all issues are resolved; if all
+#                     PASS, remove the fixes file and save a clean report.
 #
 # WORKFLOWS:
 #   1. Quick fix:     ./doc_audit.sh --run --fix
 #   2. Review first:  ./doc_audit.sh --run
 #                     (read/edit doc_audit_report.txt)
 #                     ./doc_audit.sh --fix
+#                     (apply fixes)
+#                     ./doc_audit.sh --clean
 #   3. Interactive:   Open doc_audit_report.txt in an AI chat session (e.g.
 #                     kiro-cli chat, codex) and work through fixes conversationally.
+#                     ./doc_audit.sh --clean
 #
 # OPTIONS:
 #   --tool TOOL       Force kiro|codex|gemini|copilot (auto-detected if omitted)
 #   --run             Actually invoke the AI (costs tokens/credits)
 #   --fix             Generate fix suggestions (from prior report or combined with --run)
+#   --clean           Verify fixes are applied, save clean report, remove fixes file
 #   --report FILE     Use FILE as the audit report for --fix (default: doc_audit_report.txt)
 #   --quiet           Suppress status messages
 #   --help            Show this help
@@ -37,6 +43,7 @@ cd "$SCRIPT_DIR"
 TOOL=""
 RUN_MODE=false
 FIX_MODE=false
+CLEAN_MODE=false
 QUIET=false
 REPORT_FILE="doc_audit_report.txt"
 
@@ -51,6 +58,7 @@ while [[ $# -gt 0 ]]; do
         --tool)    TOOL="$2"; shift 2 ;;
         --run)     RUN_MODE=true; shift ;;
         --fix)     FIX_MODE=true; shift ;;
+        --clean)   CLEAN_MODE=true; shift ;;
         --report)  REPORT_FILE="$2"; shift 2 ;;
         --quiet)   QUIET=true; shift ;;
         --help|-h) usage ;;
@@ -90,7 +98,7 @@ gather_state() {
 gather_state
 
 # ── Dry-run mode (default) ────────────────────────────────────────────────────
-if [[ "$RUN_MODE" == false && "$FIX_MODE" == false ]]; then
+if [[ "$RUN_MODE" == false && "$FIX_MODE" == false && "$CLEAN_MODE" == false ]]; then
     echo "=== doc_audit.sh — DRY RUN (no AI invoked) ==="
     echo ""
     echo "Detected AI tool: ${TOOL:-NONE}"
@@ -114,6 +122,7 @@ if [[ "$RUN_MODE" == false && "$FIX_MODE" == false ]]; then
     echo "  ./doc_audit.sh --run --fix            # audit + fix suggestions"
     echo "  ./doc_audit.sh --fix                  # fix from previous report"
     echo "  ./doc_audit.sh --fix --report FILE    # fix from edited report"
+    echo "  ./doc_audit.sh --clean                # verify fixes, save clean report"
     echo ""
     if [[ -f "$REPORT_FILE" ]]; then
         echo "Existing report found: $REPORT_FILE ($(wc -l < "$REPORT_FILE") lines)"
@@ -304,3 +313,53 @@ if [[ "$FIX_MODE" == true ]]; then
 fi
 
 [[ "$QUIET" == false ]] && echo "--- Done ---"
+
+# ── Clean mode ────────────────────────────────────────────────────────────────
+if [[ "$CLEAN_MODE" == true ]]; then
+    [[ "$QUIET" == false ]] && echo ""
+    [[ "$QUIET" == false ]] && echo "=== Clean: running verification audit ==="
+
+    # Run a fresh audit to confirm no issues remain
+    AUDIT_PROMPT="$(build_audit_prompt)"
+    AUDIT_RESULT="$(invoke_ai "$AUDIT_PROMPT")"
+
+    # Check if any FAIL remains
+    if echo "$AUDIT_RESULT" | grep -qi "FAIL"; then
+        echo "$AUDIT_RESULT"
+        echo ""
+        echo "FAIL items still present — not cleaning up."
+        # Save the new report for reference
+        {
+            echo "# Documentation Audit Report"
+            echo "# Generated: $(date -Iseconds)"
+            echo "# Tool: $TOOL"
+            echo "#"
+            echo "# FAIL items remain — fixes still needed."
+            echo ""
+            echo "$AUDIT_RESULT"
+        } > "$REPORT_FILE"
+        [[ "$QUIET" == false ]] && echo "Updated report: $REPORT_FILE"
+        exit 1
+    else
+        # All clear — save clean report, remove fixes file
+        {
+            echo "# Documentation Audit Report"
+            echo "# Generated: $(date -Iseconds)"
+            echo "# Tool: $TOOL"
+            echo "# Status: ALL PASS"
+            echo "#"
+            echo "# All documentation rules verified — no issues found."
+            echo ""
+            echo "$AUDIT_RESULT"
+        } > "$REPORT_FILE"
+
+        FIX_FILE="${REPORT_FILE%.txt}_fixes.txt"
+        if [[ -f "$FIX_FILE" ]]; then
+            rm -f "$FIX_FILE"
+            [[ "$QUIET" == false ]] && echo "Removed: $FIX_FILE (fixes already applied)"
+        fi
+
+        [[ "$QUIET" == false ]] && echo "Clean report saved: $REPORT_FILE"
+        [[ "$QUIET" == false ]] && echo "=== All rules PASS — clean complete ==="
+    fi
+fi
