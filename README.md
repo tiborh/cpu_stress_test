@@ -14,7 +14,9 @@ exist on macOS, Windows, or BSD.
 make                 # build all utilities
 make check           # build + smoke-test every binary
 make install         # install to ~/.local/bin (PREFIX= overridable)
+make uninstall       # remove from ~/.local/bin
 make plot            # re-generate PNG plot from all CSVs in results/
+make clean           # delete built binaries and object files
 ./cpu_stress auto 60 math   # stress all cores for 60s, logging temperature
 ./cpu_temp           # print current CPU temperature
 ```
