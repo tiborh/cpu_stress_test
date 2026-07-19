@@ -165,7 +165,8 @@ TASK: Check each rule above. Report:
 - PASS or FAIL for each rule
 - For any FAIL, list what is missing or inconsistent
 
-Be concise. Use plain text.
+Be concise. Use plain text. Do not use any tools or read any files — all
+information needed is provided above. Output only the final audit result.
 EOF
 }
 
@@ -192,10 +193,16 @@ CONTENT:
 <the exact text>
 
 Only output fixes for items marked FAIL. Be precise and minimal.
+Do not use any tools or read any files — all information needed is provided
+above. Output only the fix suggestions.
 EOF
 }
 
 # ── AI invocation helper ──────────────────────────────────────────────────────
+strip_ansi() {
+    sed 's/\x1b\[[0-9;]*[a-zA-Z]//g; s/\x1b\([0-9;]*[a-zA-Z]//g; s/\x0f//g'
+}
+
 invoke_ai() {
     local prompt="$1"
     local tmpf
@@ -205,18 +212,18 @@ invoke_ai() {
     local result=""
     case "$TOOL" in
         kiro)
+            result=$(kiro-cli chat --no-interactive --trust-tools="" < "$tmpf" 2>/dev/null) || \
             result=$(kiro-cli chat --no-interactive < "$tmpf" 2>/dev/null) || \
-            result=$(cat "$tmpf" | kiro-cli chat --no-interactive 2>/dev/null) || \
             result="ERROR: kiro-cli invocation failed. Try: kiro-cli chat < $tmpf"
             ;;
         codex)
+            result=$(codex exec "$(cat "$tmpf")" 2>/dev/null) || \
             result=$(codex -q "$(cat "$tmpf")" 2>/dev/null) || \
-            result=$(codex --prompt "$(cat "$tmpf")" 2>/dev/null) || \
             result="ERROR: codex invocation failed."
             ;;
         gemini)
-            result=$(gemini "$(cat "$tmpf")" 2>/dev/null) || \
-            result=$(cat "$tmpf" | gemini 2>/dev/null) || \
+            result=$(gemini -p "$(cat "$tmpf")" 2>/dev/null) || \
+            result=$(echo "$(cat "$tmpf")" | gemini -p - 2>/dev/null) || \
             result="ERROR: gemini invocation failed."
             ;;
         copilot)
@@ -229,7 +236,8 @@ invoke_ai() {
     esac
 
     rm -f "$tmpf"
-    echo "$result"
+    # Strip ANSI escape codes for clean text output
+    echo "$result" | strip_ansi
 }
 
 # ── Run audit ─────────────────────────────────────────────────────────────────
