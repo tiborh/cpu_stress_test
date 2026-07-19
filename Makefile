@@ -36,5 +36,43 @@ plot_temp: plot_temp.c
 list_temps: list_temps_tool.c cpu_temp.o cpu_id.o
 	$(CC) $(CFLAGS) list_temps_tool.c cpu_temp.o cpu_id.o -o list_temps $(LDFLAGS)
 
+PREFIX ?= $(HOME)/.local
+
+install: all
+	install -d $(PREFIX)/bin
+	install -m 755 $(TARGETS) $(PREFIX)/bin/
+
+uninstall:
+	cd $(PREFIX)/bin && rm -f $(TARGETS)
+
+check: all
+	@echo "=== Smoke tests ==="
+	@fail=0; \
+	for t in $(TARGETS); do \
+		printf "  %-12s " "$$t"; \
+		case $$t in \
+			cpu_stress) \
+				if ./$$t auto 1 math >/dev/null 2>&1; then \
+					echo "OK"; \
+				else \
+					echo "FAIL"; fail=1; \
+				fi ;; \
+			plot_temp) \
+				if ./$$t --help >/dev/null 2>&1 || [ $$? -le 1 ]; then \
+					echo "OK (--help)"; \
+				else \
+					echo "FAIL"; fail=1; \
+				fi ;; \
+			*) \
+				if ./$$t >/dev/null 2>&1; then \
+					echo "OK"; \
+				else \
+					echo "FAIL"; fail=1; \
+				fi ;; \
+		esac; \
+	done; \
+	echo "=== Done ==="; \
+	if [ $$fail -ne 0 ]; then echo "Some tests FAILED"; exit 1; fi
+
 clean:
 	rm -f $(TARGETS) *.o

@@ -10,6 +10,9 @@ list_temps
 # Ignore compiled object files
 *.o
 
+# Ignore generated plots
+*.png
+
 # Ignore temporary/lock files
 .~lock.*
 *.swp
