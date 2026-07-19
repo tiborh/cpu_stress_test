@@ -70,6 +70,9 @@ section() {
     echo "═══ $1 ═══"
 }
 
+# ── Record existing CSVs so we only clean up test-generated ones ──────────────
+EXISTING_CSVS=$(ls results/*.csv 2>/dev/null | sort)
+
 # ── 1. Build ──────────────────────────────────────────────────────────────────
 section "Build (gcc)"
 run_test "make clean" make clean
@@ -149,6 +152,12 @@ if ./check_audit_deps.sh --quiet >/dev/null 2>&1; then
 else
     printf "  %-40s SKIP (audit deps missing)\n" "security_audit.sh"
     ((SKIP++))
+fi
+
+# ── Cleanup: remove CSVs created during this test run ─────────────────────────
+NEW_CSVS=$(comm -13 <(echo "$EXISTING_CSVS") <(ls results/*.csv 2>/dev/null | sort))
+if [[ -n "$NEW_CSVS" ]]; then
+    echo "$NEW_CSVS" | xargs rm -f
 fi
 
 # ── Summary ───────────────────────────────────────────────────────────────────
