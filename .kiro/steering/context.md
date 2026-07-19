@@ -23,6 +23,7 @@ License: GPL-3.0.
 | Sensor config | `cpu_temp.conf` |
 | Dependency checkers | `check_build_deps.sh`, `check_audit_deps.sh` |
 | Security audit | `security_audit.sh` |
+| Coding style & contribution rules | `CONTRIBUTING.md` |
 
 ## Documentation Sync Rules
 
@@ -54,6 +55,8 @@ Any change to the following **must** be reflected in documentation:
 
 ## Conventions
 
+- **Coding style**: Follow `CONTRIBUTING.md` — indentation, naming, formatting,
+  and error-handling rules defined there apply to all generated code.
 - **C standard**: C99, compiled with `-O2 -Wall -fstack-protector-strong`
 - **Threading**: pthread (used only in `cpu_stress`)
 - **Platform**: Linux only (hwmon, thermal_zone, /proc/cpuinfo)
