@@ -200,7 +200,7 @@ EOF
 
 # ── AI invocation helper ──────────────────────────────────────────────────────
 strip_ansi() {
-    sed 's/\x1b\[[0-9;]*[a-zA-Z]//g; s/\x1b\([0-9;]*[a-zA-Z]//g; s/\x0f//g'
+    sed -e 's/\x1b\[[0-9;]*[a-zA-Z]//g' -e 's/\x1b([0-9;]*[a-zA-Z]//g' -e 's/\x0f//g'
 }
 
 invoke_ai() {
