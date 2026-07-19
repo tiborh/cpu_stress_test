@@ -1,0 +1,87 @@
+cpu_stress_test — Security Audit Report
+Generated   : 2026-06-14 19:56:05
+Host        : Linux 7.0.10-1-MANJARO x86_64
+Directory   : /home/tiborh/repos/learning/c/cpu_stress_test
+Auditor     : security_audit.sh
+
+══════════════════════════════════════════════════════════════════════
+  Tool Availability
+══════════════════════════════════════════════════════════════════════
+  [PASS] cppcheck found: /usr/bin/cppcheck
+  [PASS] flawfinder found: /usr/bin/flawfinder
+  [PASS] readelf found: /usr/bin/readelf
+  [PASS] objdump found: /usr/bin/objdump
+  [PASS] gcc found: /usr/bin/gcc
+  [PASS] valgrind found: /usr/bin/valgrind (valgrind-3.25.1)
+
+══════════════════════════════════════════════════════════════════════
+  Build / Compiler Warnings
+══════════════════════════════════════════════════════════════════════
+  [PASS] Clean build — no warnings with -Wall -Wextra -Wformat-security
+
+══════════════════════════════════════════════════════════════════════
+  Binary Hardening (readelf / objdump)
+══════════════════════════════════════════════════════════════════════
+  Checking: PIE, RELRO, stack-canary calls
+
+  ── cpu_stress ──
+  [PASS] cpu_stress: PIE enabled (ELF type DYN)
+  [PASS] cpu_stress: Full RELRO (GNU_RELRO + BIND_NOW)
+  [PASS] cpu_stress: Stack canaries present (13 call sites)
+  ── cpu_id ──
+  [PASS] cpu_id: PIE enabled (ELF type DYN)
+  [PASS] cpu_id: Full RELRO (GNU_RELRO + BIND_NOW)
+  [PASS] cpu_id: Stack canaries present (5 call sites)
+  ── cpu_temp ──
+  [PASS] cpu_temp: PIE enabled (ELF type DYN)
+  [PASS] cpu_temp: Full RELRO (GNU_RELRO + BIND_NOW)
+  [PASS] cpu_temp: Stack canaries present (11 call sites)
+  ── cpu_cores ──
+  [PASS] cpu_cores: PIE enabled (ELF type DYN)
+  [PASS] cpu_cores: Full RELRO (GNU_RELRO + BIND_NOW)
+  [WARN] cpu_cores: No stack canary calls detected — consider -fstack-protector-strong
+  ── plot_temp ──
+  [PASS] plot_temp: PIE enabled (ELF type DYN)
+  [PASS] plot_temp: Full RELRO (GNU_RELRO + BIND_NOW)
+  [PASS] plot_temp: Stack canaries present (3 call sites)
+  ── list_temps ──
+  [PASS] list_temps: PIE enabled (ELF type DYN)
+  [PASS] list_temps: Full RELRO (GNU_RELRO + BIND_NOW)
+  [PASS] list_temps: Stack canaries present (10 call sites)
+  ── timestamp ──
+  [PASS] timestamp: PIE enabled (ELF type DYN)
+  [PASS] timestamp: Full RELRO (GNU_RELRO + BIND_NOW)
+  [PASS] timestamp: Stack canaries present (4 call sites)
+
+══════════════════════════════════════════════════════════════════════
+  Static Analysis — cppcheck
+══════════════════════════════════════════════════════════════════════
+  cppcheck Cppcheck 2.20.0
+  [PASS] cppcheck: no errors or warnings
+
+══════════════════════════════════════════════════════════════════════
+  Static Analysis — flawfinder (CWE / dangerous function scan)
+══════════════════════════════════════════════════════════════════════
+  flawfinder 2.0.20, showing level ≥ 3
+  [PASS] flawfinder: no hits at level 3+
+
+══════════════════════════════════════════════════════════════════════
+  Dynamic Analysis — valgrind memcheck
+══════════════════════════════════════════════════════════════════════
+  Building static debug binaries for valgrind...
+  [PASS] valgrind/cpu_id: no application-code memory errors or definite leaks
+  [PASS] valgrind/cpu_temp: no application-code memory errors or definite leaks
+  [PASS] valgrind/cpu_cores: no application-code memory errors or definite leaks
+  [PASS] valgrind/timestamp: no application-code memory errors or definite leaks
+
+══════════════════════════════════════════════════════════════════════
+  Summary
+══════════════════════════════════════════════════════════════════════
+  Checks run : 34
+  Passed     : 33
+  Warnings   : 1
+  Failed     : 0
+
+  OVERALL: PASS WITH WARNINGS — review 1 item(s) above
+
+Report end: 2026-06-14 19:56:08

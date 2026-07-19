@@ -1,0 +1,15 @@
+# Ignore compiled binary executables
+cpu_stress
+cpu_cores
+cpu_temp
+cpu_id
+timestamp
+plot_temp
+list_temps
+
+# Ignore compiled object files
+*.o
+
+# Ignore temporary/lock files
+.~lock.*
+*.swp
