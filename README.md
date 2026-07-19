@@ -8,6 +8,8 @@ helper scripts for checking dependencies and running a security audit.
 
 ```bash
 make                 # build all utilities
+make check           # build + smoke-test every binary
+make install         # install to ~/.local/bin (PREFIX= overridable)
 ./cpu_stress auto 60 math   # stress all cores for 60s, logging temperature
 ./cpu_temp           # print current CPU temperature
 ```
