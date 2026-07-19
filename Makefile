@@ -78,6 +78,14 @@ check: all
 	echo "=== Done ==="; \
 	if [ $$fail -ne 0 ]; then echo "Some tests FAILED"; exit 1; fi
 
+# ── Plot all results ──────────────────────────────────────────────────────────
+plot: plot_temp
+	@if ls results/*.csv >/dev/null 2>&1; then \
+		./plot_temp results/; \
+	else \
+		echo "No CSV files in results/"; exit 1; \
+	fi
+
 # ── Clean ─────────────────────────────────────────────────────────────────────
 clean:
 	rm -f $(TARGETS) *.o *.d

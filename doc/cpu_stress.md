@@ -57,6 +57,7 @@ make            # builds all utilities
 make check      # build + smoke-test every binary (exit-code check)
 make install    # install to ~/.local/bin (override: make install PREFIX=/usr/local)
 make uninstall  # remove installed binaries
+make plot       # re-generate PNG plot from all CSVs in results/ (needs gnuplot)
 make clean      # removes binaries and object files
 ```
 
