@@ -10,6 +10,9 @@ list_temps
 # Ignore compiled object files
 *.o
 
+# Ignore auto-generated dependency files
+*.d
+
 # Ignore generated plots
 *.png
 

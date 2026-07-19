@@ -1,41 +1,44 @@
 CC = gcc
-CFLAGS = -O2 -Wall -fstack-protector-strong
-LDFLAGS = -lpthread -Wl,-z,relro,-z,now
+CFLAGS = -O2 -Wall -Wextra -Wpedantic -fstack-protector-strong -D_FORTIFY_SOURCE=2 -MMD -MP
+LDFLAGS = -Wl,-z,relro,-z,now
 
 TARGETS = cpu_stress cpu_cores cpu_temp cpu_id timestamp plot_temp list_temps
 
+# Object files built from library modules
+OBJS = cpu_temp.o cpu_id.o timestamp.o
+
 all: $(TARGETS)
 
-cpu_temp.o: cpu_temp.c cpu_temp.h
-	$(CC) $(CFLAGS) -c cpu_temp.c -o cpu_temp.o
+# ── Pattern rule for .o files (auto-generates .d dependency files) ────────────
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-cpu_id.o: cpu_id.c cpu_id.h
-	$(CC) $(CFLAGS) -c cpu_id.c -o cpu_id.o
-
-timestamp.o: timestamp.c timestamp.h
-	$(CC) $(CFLAGS) -c timestamp.c -o timestamp.o
-
-cpu_stress: cpu_stress.c cpu_temp.o cpu_id.o timestamp.o
-	$(CC) $(CFLAGS) cpu_stress.c cpu_temp.o cpu_id.o timestamp.o -o cpu_stress $(LDFLAGS)
+# ── Binaries ──────────────────────────────────────────────────────────────────
+cpu_stress: cpu_stress.c $(OBJS)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS) -lpthread
 
 cpu_cores: cpu_cores.c
-	$(CC) $(CFLAGS) cpu_cores.c -o cpu_cores $(LDFLAGS)
+	$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS)
 
 cpu_temp: cpu_temp_tool.c cpu_temp.o cpu_id.o
-	$(CC) $(CFLAGS) cpu_temp_tool.c cpu_temp.o cpu_id.o -o cpu_temp $(LDFLAGS)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 cpu_id: cpu_id_tool.c cpu_id.o
-	$(CC) $(CFLAGS) cpu_id_tool.c cpu_id.o -o cpu_id $(LDFLAGS)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 timestamp: timestamp_tool.c timestamp.o
-	$(CC) $(CFLAGS) timestamp_tool.c timestamp.o -o timestamp $(LDFLAGS)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 plot_temp: plot_temp.c
-	$(CC) $(CFLAGS) plot_temp.c -o plot_temp $(LDFLAGS)
+	$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS)
 
 list_temps: list_temps_tool.c cpu_temp.o cpu_id.o
-	$(CC) $(CFLAGS) list_temps_tool.c cpu_temp.o cpu_id.o -o list_temps $(LDFLAGS)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
+# ── Include auto-generated dependency files ───────────────────────────────────
+-include $(OBJS:.o=.d)
+
+# ── Install / Uninstall ───────────────────────────────────────────────────────
 PREFIX ?= $(HOME)/.local
 
 install: all
@@ -45,6 +48,7 @@ install: all
 uninstall:
 	cd $(PREFIX)/bin && rm -f $(TARGETS)
 
+# ── Smoke tests ───────────────────────────────────────────────────────────────
 check: all
 	@echo "=== Smoke tests ==="
 	@fail=0; \
@@ -74,5 +78,6 @@ check: all
 	echo "=== Done ==="; \
 	if [ $$fail -ne 0 ]; then echo "Some tests FAILED"; exit 1; fi
 
+# ── Clean ─────────────────────────────────────────────────────────────────────
 clean:
-	rm -f $(TARGETS) *.o
+	rm -f $(TARGETS) *.o *.d
