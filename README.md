@@ -4,6 +4,10 @@ A small suite of C command-line utilities for stress-testing CPUs, reading CPU
 temperature, identifying the processor, and plotting temperature logs — plus
 helper scripts for checking dependencies and running a security audit.
 
+**Platform:** Linux only. The utilities rely on `/proc/cpuinfo`, sysfs thermal
+zones (`/sys/class/thermal/`), and hwmon (`/sys/class/hwmon/`) — none of which
+exist on macOS, Windows, or BSD.
+
 ## Quick start
 
 ```bash
