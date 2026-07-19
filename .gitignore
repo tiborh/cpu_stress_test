@@ -13,6 +13,10 @@ list_temps
 # Ignore generated plots
 *.png
 
+# Ignore doc_audit output files
+doc_audit_report.txt
+doc_audit_report_fixes.txt
+
 # Ignore temporary/lock files
 .~lock.*
 *.swp
