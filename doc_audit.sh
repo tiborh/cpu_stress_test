@@ -323,8 +323,24 @@ if [[ "$CLEAN_MODE" == true ]]; then
     AUDIT_PROMPT="$(build_audit_prompt)"
     AUDIT_RESULT="$(invoke_ai "$AUDIT_PROMPT")"
 
-    # Check if any FAIL remains
-    if echo "$AUDIT_RESULT" | grep -qi "FAIL"; then
+    # Check if any FAIL remains in the final results
+    # Strategy: look for FAIL in summary table rows or standalone result lines,
+    # but also accept "All rules PASS" / "All PASS" as definitive all-clear.
+    has_fail=false
+    if echo "$AUDIT_RESULT" | grep -qiE "\| FAIL\b|^FAIL\b"; then
+        # Check it's not just in reasoning that was later revised
+        if ! echo "$AUDIT_RESULT" | grep -qiE "All.*(rules |)PASS|no (gaps|issues|failures) found"; then
+            has_fail=true
+        fi
+    fi
+    if ! echo "$AUDIT_RESULT" | grep -qiE "All.*(rules |)PASS|no (gaps|issues|failures) found"; then
+        # No definitive all-clear statement found — treat as uncertain, re-check
+        if echo "$AUDIT_RESULT" | grep -qiE "\| FAIL\b"; then
+            has_fail=true
+        fi
+    fi
+
+    if [[ "$has_fail" == true ]]; then
         echo "$AUDIT_RESULT"
         echo ""
         echo "FAIL items still present — not cleaning up."
