@@ -33,6 +33,11 @@
 #   --report FILE     Use FILE as the audit report for --fix (default: doc_audit_report.txt)
 #   --quiet           Suppress status messages
 #   --help            Show this help
+#
+# LIMITATION:
+#   This script has only been tested with kiro-cli.  The codex, gemini, and
+#   copilot backends are auto-detected but have NOT been validated — they may
+#   require different flags, produce unexpected output formats, or fail silently.
 
 set -euo pipefail
 

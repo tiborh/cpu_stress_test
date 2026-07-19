@@ -879,6 +879,12 @@ The following systems or configurations may require code adjustments:
 | **32-bit platforms** | `unsigned long long` in `stress_math` and `size_t` arithmetic should be fine, but not tested. |
 | **Non-Linux POSIX systems** | `pthreads` is portable; sysfs paths are Linux-specific. |
 
+### Documentation Audit (`doc_audit.sh`)
+
+| Scenario | Issue |
+| :--- | :--- |
+| **Non-kiro backends** | The script auto-detects `codex`, `gemini`, and `copilot` in addition to `kiro-cli`, but only `kiro-cli` has been tested. Other backends may require different CLI flags, produce unexpected output formats, or fail silently. |
+
 ---
 
 ## 16. Future Directions: Other CPU Stress Approaches

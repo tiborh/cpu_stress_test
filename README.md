@@ -61,7 +61,7 @@ See [doc/cpu_stress.md](doc/cpu_stress.md) for full per-utility details.
 | `check_build_deps.sh` | Verify build/run prerequisites; per-distro install hints (apt / pacman / dnf / zypper) |
 | `check_audit_deps.sh` | Verify `security_audit.sh` prerequisites; per-distro install hints (apt / pacman / dnf / zypper) |
 | `security_audit.sh` | Static + dynamic security audit producing a pass/fail/warn report |
-| `doc_audit.sh` | AI-powered documentation completeness audit (dry-run by default; `--run` to invoke AI) |
+| `doc_audit.sh` | AI-powered documentation completeness audit (dry-run by default; `--run` to invoke AI). **Only tested with kiro-cli**; other backends (codex, gemini, copilot) are detected but unvalidated. |
 | `test_full.sh` | Full local test suite including hardware-dependent tests (`--quick` to skip stress test) |
 
 ## Layout
