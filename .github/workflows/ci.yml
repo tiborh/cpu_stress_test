@@ -4,24 +4,28 @@ on:
   push:
     branches: [main]
     paths:
-      - '*.c'
-      - '*.h'
-      - '*.conf'
+      - '**/*.c'
+      - '**/*.h'
+      - '**/*.conf'
       - 'Makefile'
-      - 'check_build_deps.sh'
+      - '*.sh'
       - 'results/**'
       - 'tests/**'
+      - '**/*.md'
+      - '.gitignore'
       - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
     paths:
-      - '*.c'
-      - '*.h'
-      - '*.conf'
+      - '**/*.c'
+      - '**/*.h'
+      - '**/*.conf'
       - 'Makefile'
-      - 'check_build_deps.sh'
+      - '*.sh'
       - 'results/**'
       - 'tests/**'
+      - '**/*.md'
+      - '.gitignore'
       - '.github/workflows/ci.yml'
 
 jobs:
@@ -36,6 +40,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate shell syntax
+        run: bash -n ./*.sh
+
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -47,11 +54,14 @@ jobs:
       - name: Build
         run: make CC=${{ matrix.cc }}
 
+      - name: Fixture tests
+        run: make CC=${{ matrix.cc }} test
+
       - name: Smoke tests
-        run: make check
+        run: make CC=${{ matrix.cc }} check
 
       - name: Verify dependency checker
         run: ./check_build_deps.sh --build
 
       - name: Verify gnuplot integration
-        run: make plot
+        run: make CC=${{ matrix.cc }} plot

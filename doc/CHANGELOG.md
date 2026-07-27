@@ -24,6 +24,10 @@ date. The most recent changes are listed first.
 - `*.png` added to `.gitignore` to prevent generated plots from being tracked.
 
 ### Changed
+- **CI now covers scripts and documentation changes.** The workflow runs for
+  shell-script, Markdown, test, and ignore-rule updates; validates every root
+  shell script with `bash -n`; and explicitly runs fixture tests, smoke tests,
+  and plot generation with the selected GCC or Clang matrix compiler.
 - **Thread shutdown uses POSIX cancellation.** `cpu_stress` no longer shares an
   unsynchronized `volatile` stop flag between worker threads. The main thread
   cancels and joins workers; the math loop reaches explicit cancellation
