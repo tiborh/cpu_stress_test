@@ -24,6 +24,11 @@ date. The most recent changes are listed first.
 - `*.png` added to `.gitignore` to prevent generated plots from being tracked.
 
 ### Changed
+- **CSV parsing now has regression coverage and a strict compatibility
+  contract.** `make test` validates filename parsing, headers, `N/A` samples,
+  averaging, and mixed polling intervals with fake gnuplot fixtures.
+  `plot_temp` rejects malformed filename and row shapes while retaining valid
+  numeric samples from logs containing `N/A`.
 - **CI now covers scripts and documentation changes.** The workflow runs for
   shell-script, Markdown, test, and ignore-rule updates; validates every root
   shell script with `bash -n`; and explicitly runs fixture tests, smoke tests,

@@ -5,8 +5,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <math.h>
 
 /* Suppress gcc's conservative -Wformat-truncation false positives.
  * All path buffers are bounded by MAX_PATH at the point of writing;
@@ -50,6 +52,22 @@ static void underscores_to_spaces(char *s) {
     for (; *s; s++) if (*s == '_') *s = ' ';
 }
 
+static int is_digits(const char *text, size_t len) {
+    if (len == 0) return 0;
+    for (size_t i = 0; i < len; i++) {
+        if (!isdigit((unsigned char)text[i])) return 0;
+    }
+    return 1;
+}
+
+static int is_number_with_suffix(const char *text, const char *suffix) {
+    size_t text_len = strlen(text);
+    size_t suffix_len = strlen(suffix);
+    return text_len > suffix_len &&
+           strcmp(text + text_len - suffix_len, suffix) == 0 &&
+           is_digits(text, text_len - suffix_len);
+}
+
 /* Parse cpu_id / method / timestamp from basename.
  * Pattern: <cpu_id>_<method>_<N>cores_<M>sec_<timestamp>.csv
  * method is the last simple word before "NNcores". */
@@ -58,6 +76,8 @@ static int parse_filename(const char *path, char *cpu_id, size_t cpu_sz,
                           char *timestamp, size_t ts_sz) {
     const char *base = strrchr(path, '/');
     base = base ? base + 1 : path;
+    size_t base_len = strlen(base);
+    if (base_len <= 4 || strcmp(base + base_len - 4, ".csv") != 0) return 0;
 
     char tmp[MAX_PATH];
     snprintf(tmp, sizeof(tmp), "%s", base);
@@ -72,14 +92,22 @@ static int parse_filename(const char *path, char *cpu_id, size_t cpu_sz,
         while (*p && *p != '_') p++;
         if (*p == '_') { *p = '\0'; p++; }
     }
+    if (*p) return 0;
+
     /* find "NNcores" token */
     int cores_idx = -1;
     for (int i = 0; i < tc; i++) {
-        char *t = tokens[i];
-        size_t tl = strlen(t);
-        if (tl > 5 && strcmp(t + tl - 5, "cores") == 0) { cores_idx = i; break; }
+        if (is_number_with_suffix(tokens[i], "cores")) {
+            cores_idx = i;
+            break;
+        }
     }
-    if (cores_idx < 2) return 0; /* can't parse */
+    if (cores_idx < 2 || tc != cores_idx + 4 ||
+        !is_number_with_suffix(tokens[cores_idx + 1], "sec") ||
+        strlen(tokens[cores_idx + 2]) != 8 || !is_digits(tokens[cores_idx + 2], 8) ||
+        strlen(tokens[cores_idx + 3]) != 6 || !is_digits(tokens[cores_idx + 3], 6)) {
+        return 0;
+    }
 
     /* method is the token just before "NNcores" */
     snprintf(method, meth_sz, "%s", tokens[cores_idx - 1]);
@@ -91,8 +119,7 @@ static int parse_filename(const char *path, char *cpu_id, size_t cpu_sz,
         strncat(cpu_id, tokens[i], cpu_sz - strlen(cpu_id) - 1);
     }
 
-    /* timestamp = last token (after "NNsec") */
-    snprintf(timestamp, ts_sz, "%s", tokens[tc - 1]);
+    snprintf(timestamp, ts_sz, "%s_%s", tokens[cores_idx + 2], tokens[cores_idx + 3]);
     return 1;
 }
 
@@ -112,11 +139,20 @@ static int load_csv(FileData *fd) {
     }
 
     fd->n = 0;
+    int line_number = 1;
     while (fgets(line, sizeof(line), f) && fd->n < MAX_ROWS) {
-        char ts[32]; double t;
-        if (sscanf(line, "%31[^,],%d,%lf", ts, &fd->elapsed[fd->n], &t) == 3) {
-            fd->temp[fd->n] = t;
+        line_number++;
+        char ts[32], extra;
+        int elapsed;
+        double temp;
+        int fields = sscanf(line, "%31[^,],%d,%lf %c", ts, &elapsed, &temp, &extra);
+        if (fields == 3 && ts[0] != '\0' && elapsed >= 0 && isfinite(temp)) {
+            fd->elapsed[fd->n] = elapsed;
+            fd->temp[fd->n] = temp;
             fd->n++;
+        } else {
+            fprintf(stderr, "Warning: '%s' line %d has an invalid temperature row — skipping\n",
+                    fd->path, line_number);
         }
     }
     fclose(f);

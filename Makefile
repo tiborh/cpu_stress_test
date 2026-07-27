@@ -43,8 +43,9 @@ list_temps: list_temps_tool.c cpu_temp.o cpu_id.o
 $(TEST_TARGET): tests/test_cpu_temp.c cpu_temp.c cpu_temp.h cpu_id.c cpu_id.h
 	$(CC) $(CFLAGS) tests/test_cpu_temp.c cpu_temp.c cpu_id.c -o $@ $(LDFLAGS)
 
-test: $(TEST_TARGET)
+test: $(TEST_TARGET) plot_temp
 	./$(TEST_TARGET)
+	bash ./tests/test_plot_temp.sh ./plot_temp
 
 # ── Install / Uninstall ───────────────────────────────────────────────────────
 PREFIX ?= $(HOME)/.local

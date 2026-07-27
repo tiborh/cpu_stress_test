@@ -62,12 +62,14 @@ make plot       # re-generate PNG plot from all CSVs in results/ (needs gnuplot)
 make clean      # removes binaries and object files
 ```
 
-`make test` exercises temperature sensor selection against committed fake sysfs
-trees, so it does not depend on the host's thermal hardware. The fixtures cover
-the sensor ranking, implausible-reading rejection, config-primary and
-config-fallback behavior, and the final `thermal_zone0` fallback. The test
-temporarily sets `CPU_TEMP_SYSFS_ROOT`; production commands use `/sys` unless
-that variable is explicitly set.
+`make test` exercises temperature sensor selection and CSV plotting against
+committed fixtures, so it does not depend on the host's thermal hardware or a
+real gnuplot installation. The temperature fixtures cover sensor ranking,
+implausible-reading rejection, config-primary/config-fallback behavior, and the
+final `thermal_zone0` fallback. The plot fixtures cover valid averaging, missing
+(`N/A`) samples, mixed polling intervals, malformed headers, and malformed file
+names. The temperature test temporarily sets `CPU_TEMP_SYSFS_ROOT`; production
+commands use `/sys` unless that variable is explicitly set.
 
 **Prerequisites**
 
@@ -543,6 +545,16 @@ Requires `gnuplot` (tested with gnuplot 6.0).
 
 Inputs can be mixed: individual CSV files, a directory (all `.csv` files inside are loaded), or both. A `.png` argument is treated as the explicit output path.
 
+### CSV compatibility contract
+
+`plot_temp` accepts only files named
+`<cpu_id>_<method>_<N>cores_<M>sec_<YYYYMMDD>_<HHMMSS>.csv` with the exact
+header `Timestamp,ElapsedSeconds,TemperatureCelsius`. Rows require a non-empty
+timestamp, a non-negative elapsed-second value, and a finite numeric
+temperature. `N/A` samples written by `cpu_stress` are supported: they are
+skipped with a warning, while remaining numeric samples are plotted. Invalid
+filename, header, or row formats are skipped with a warning.
+
 - If `output.png` is omitted, the output PNG is placed in the **same directory as the input files**. If inputs come from different directories, it defaults to `results/`. The filename is derived from the longest common prefix of all input basenames with the latest timestamp appended.
 - The plot title defaults to `"CPU Stress Tests"` for multi-file plots, or the output filename stem for a single file. Override with `--title "custom title"`.
 - CPU IDs longer than 15 characters are truncated in series labels. Override with `--truncate N` (only affects style 0).
@@ -571,7 +583,6 @@ Files are grouped by `(cpu_id, method)` extracted from the filename pattern `<cp
 #### Averaging rules (same cpu_id + method)
 - All files in the group must start at `ElapsedSeconds = 0`; if any do not, the program aborts with an error.
 - **Same poll interval**: series are truncated to the shortest duration (tail rows discarded; a warning is printed per file that loses rows), then averaged point-by-point. An info message confirms how many files were averaged.
-- **Different poll intervals**: only elapsed-second values common to all files are kept; dropped points are reported as a warning. Average is computed over the common time points.
 - If poll intervals differ across files in the same group, a warning is printed and the files are plotted as **separate series** instead of averaged.
 
 #### Handling different durations (truncation)

@@ -7,9 +7,10 @@
 - Build one executable with `make <target>`, for example `make cpu_temp` or
   `make plot_temp`. The targets are `cpu_stress`, `cpu_cores`, `cpu_temp`,
   `cpu_id`, `timestamp`, `plot_temp`, and `list_temps`.
-- Run `make test` for hardware-independent `cpu_temp` fixture tests. Run the
-  CI smoke suite with `make check`; it runs those tests, performs a one-second
-  `math` stress run when sensors are available, and invokes `plot_temp --help`.
+- Run `make test` for hardware-independent `cpu_temp` and `plot_temp` fixture
+  tests. Run the CI smoke suite with `make check`; it runs those tests, performs
+  a one-second `math` stress run when sensors are available, and invokes
+  `plot_temp --help`.
 - There is no test runner with individual test selectors. For a focused
   behavior check, build the relevant target and invoke its CLI, for example:
   `make cpu_cores && ./cpu_cores`, `make cpu_id && ./cpu_id`, or
