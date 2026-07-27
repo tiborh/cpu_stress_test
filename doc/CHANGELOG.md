@@ -24,6 +24,11 @@ date. The most recent changes are listed first.
 - `*.png` added to `.gitignore` to prevent generated plots from being tracked.
 
 ### Changed
+- **Thread shutdown uses POSIX cancellation.** `cpu_stress` no longer shares an
+  unsynchronized `volatile` stop flag between worker threads. The main thread
+  cancels and joins workers; the math loop reaches explicit cancellation
+  points, and the `/dev/urandom` worker closes its descriptor through a cleanup
+  handler. pthread errors now report their returned error codes.
 - **Dependency checkers now support RPM-based distros.** Both
   `check_build_deps.sh` and `check_audit_deps.sh` recognise a third family,
   `rpm` (Fedora/RHEL via `dnf`/`yum`, openSUSE via `zypper`), in addition to

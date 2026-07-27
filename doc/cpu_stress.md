@@ -191,8 +191,8 @@ graph TD
     G --> H[Main Thread: sleep 1s & print CPU Temp]
     H --> I{Duration elapsed?}
     I -- No --> H
-    I -- Yes --> J[Set keep_running = false]
-    J --> K[Join/Wait for N Threads to exit]
+    I -- Yes --> J[Request worker cancellation]
+    J --> K[Join/Wait for N worker cleanup handlers]
     K --> L[Free Memory]
     L --> M([Exit Program])
 ```
@@ -201,10 +201,18 @@ graph TD
 
 #### 1. Thread Management
 *   **API**: POSIX Threads (`pthread` library).
-*   **Functions**: `pthread_create` for parallel execution, `pthread_join` to clean up and synchronize thread termination before exit.
+*   **Functions**: `pthread_create` for parallel execution, `pthread_cancel` to
+    request shutdown, and `pthread_join` to synchronize worker cleanup before
+    exit.
 
 #### 2. Thread State Coordination
-A single global `volatile bool keep_running` flag controls execution. The `volatile` keyword is crucial: it prevents the compiler from caching the flag in a CPU register, ensuring worker threads always read its current value from memory and respond promptly when the main thread sets it to `false`.
+Workers use deferred POSIX thread cancellation rather than a shared mutable
+stop flag. After the duration elapses, the main thread calls `pthread_cancel`
+for every worker and then joins them. The `/dev/urandom` worker reaches a
+cancellation point in `read`; the `math` worker explicitly calls
+`pthread_testcancel` every 16,384 loop iterations. Cleanup handlers close the
+`/dev/urandom` descriptor and print the worker shutdown message, including when
+the cancellation arrives during `read`.
 
 #### 3. Core Worker Routines
 

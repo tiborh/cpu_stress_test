@@ -14,10 +14,14 @@
 #include "cpu_id.h"
 #include "timestamp.h"
 
+static void print_worker_stopped(void *arg) {
+    printf("[Thread %d] Stopped.\n", *(int *)arg);
+}
 
-
-// Global flag to control the run state of the threads
-volatile bool keep_running = true;
+static void close_file_descriptor(void *arg) {
+    int fd = *(int *)arg;
+    if (fd >= 0) close(fd);
+}
 
 // Stress method using the /dev/urandom mechanism
 void* stress_urandom(void* arg) {
@@ -31,15 +35,16 @@ void* stress_urandom(void* arg) {
     char buffer[4096];
     printf("[Thread %d] Started stressing using /dev/urandom...\n", thread_id);
 
-    while (keep_running) {
+    pthread_cleanup_push(print_worker_stopped, &thread_id);
+    pthread_cleanup_push(close_file_descriptor, &fd);
+    for (;;) {
         // Read random bytes and discard them (mimicking cat /dev/urandom 1> /dev/null)
         if (read(fd, buffer, sizeof(buffer)) <= 0) {
             break;
         }
     }
-
-    close(fd);
-    printf("[Thread %d] Stopped.\n", thread_id);
+    pthread_cleanup_pop(1);
+    pthread_cleanup_pop(1);
     return NULL;
 }
 
@@ -47,16 +52,39 @@ void* stress_urandom(void* arg) {
 void* stress_math(void* arg) {
     int thread_id = *(int*)arg;
     volatile unsigned long long x = 0;
-    
+
     printf("[Thread %d] Started stressing using busy-loop (math)...\n", thread_id);
-    
-    while (keep_running) {
+
+    pthread_cleanup_push(print_worker_stopped, &thread_id);
+    for (unsigned long checks = 0;; checks++) {
         // Simple CPU-bound calculation to keep the core busy in user space
         x = x * 1103515245 + 12345;
+        if ((checks & 0x3fff) == 0) pthread_testcancel();
+    }
+    pthread_cleanup_pop(1);
+    return NULL;
+}
+
+static int cancel_and_join_threads(pthread_t *threads, int count) {
+    int failed = 0;
+
+    for (int i = 0; i < count; i++) {
+        int rc = pthread_cancel(threads[i]);
+        if (rc != 0) {
+            fprintf(stderr, "Error: failed to cancel thread %d: %s\n", i, strerror(rc));
+            failed = 1;
+        }
     }
 
-    printf("[Thread %d] Stopped.\n", thread_id);
-    return NULL;
+    for (int i = 0; i < count; i++) {
+        int rc = pthread_join(threads[i], NULL);
+        if (rc != 0) {
+            fprintf(stderr, "Error: failed to join thread %d: %s\n", i, strerror(rc));
+            failed = 1;
+        }
+    }
+
+    return failed;
 }
 
 void print_usage(const char* prog_name) {
@@ -147,6 +175,8 @@ int main(int argc, char* argv[]) {
     int* thread_ids = malloc(num_cores * sizeof(int));
     if (!threads || !thread_ids) {
         perror("Failed to allocate memory");
+        free(threads);
+        free(thread_ids);
         return EXIT_FAILURE;
     }
 
@@ -161,12 +191,8 @@ int main(int argc, char* argv[]) {
         }
 
         if (rc != 0) {
-            perror("Failed to create thread");
-            keep_running = false;
-            // Join already created threads and cleanup
-            for (int j = 0; j < i; j++) {
-                pthread_join(threads[j], NULL);
-            }
+            fprintf(stderr, "Error: failed to create thread %d: %s\n", i, strerror(rc));
+            cancel_and_join_threads(threads, i);
             free(threads);
             free(thread_ids);
             return EXIT_FAILURE;
@@ -231,14 +257,9 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Signal threads to stop running
+    // Request deferred cancellation, then wait for all worker cleanup handlers.
     printf("Duration elapsed. Stopping threads...\n");
-    keep_running = false;
-
-    // Wait for all threads to finish
-    for (int i = 0; i < num_cores; i++) {
-        pthread_join(threads[i], NULL);
-    }
+    int worker_cleanup_failed = cancel_and_join_threads(threads, num_cores);
 
     if (csv_file) {
         fclose(csv_file);
@@ -249,5 +270,5 @@ int main(int argc, char* argv[]) {
 
     free(threads);
     free(thread_ids);
-    return EXIT_SUCCESS;
+    return worker_cleanup_failed ? EXIT_FAILURE : EXIT_SUCCESS;
 }
