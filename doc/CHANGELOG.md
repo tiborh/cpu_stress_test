@@ -34,9 +34,10 @@ date. The most recent changes are listed first.
   `plot_temp` rejects malformed filename and row shapes while retaining valid
   numeric samples from logs containing `N/A`.
 - **CI now covers scripts and documentation changes.** The workflow runs for
-  shell-script, Markdown, test, and ignore-rule updates; validates every root
-  shell script with `bash -n`; and explicitly runs fixture tests, smoke tests,
-  and plot generation with the selected GCC or Clang matrix compiler.
+  shell-script, test, and ignore-rule updates; validates every root shell
+  script with `bash -n`; and explicitly runs fixture tests, smoke tests, and
+  plot generation with the selected GCC or Clang matrix compiler. Markdown-only
+  changes do not trigger the build matrix.
 - **Thread shutdown uses POSIX cancellation.** `cpu_stress` no longer shares an
   unsynchronized `volatile` stop flag between worker threads. The main thread
   cancels and joins workers; the math loop reaches explicit cancellation

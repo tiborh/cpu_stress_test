@@ -22,7 +22,7 @@
   `gcc` and `clang` on Ubuntu, validates every root shell script with
   `bash -n`, and runs the fixture suite with the selected compiler. Use
   `make clean && make CC=clang check` when a compiler-specific change needs
-  checking.
+  checking. Markdown-only changes do not trigger the build workflow.
 - Use `./check_build_deps.sh --build` to verify prerequisites and the full
   build. Run `./check_audit_deps.sh` before `./security_audit.sh`; the latter
   uses cppcheck, flawfinder, valgrind when available, and binary-hardening
