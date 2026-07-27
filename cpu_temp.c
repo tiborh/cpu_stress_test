@@ -8,6 +8,14 @@
 
 #define SYSFS_PATH_MAX 4096
 
+#define THERMAL_PATH "%s/class/thermal"
+#define HWMON_PATH   "%s/class/hwmon"
+
+static const char *sysfs_root(void) {
+    const char *root = getenv("CPU_TEMP_SYSFS_ROOT");
+    return (root && root[0]) ? root : "/sys";
+}
+
 /* ── config loader ────────────────────────────────────────────────────────── */
 
 #define MAX_CONFIG_ENTRIES 64
@@ -100,14 +108,16 @@ static int resolve_sensor(const char *spec, char *out_path, size_t out_sz, bool 
     snprintf(label, sizeof(label), "%s", colon + 1);
 
     if (strcmp(driver, "thermal_zone") == 0) {
-        /* scan /sys/class/thermal/thermal_zone* for matching type */
-        DIR *dir = opendir("/sys/class/thermal");
+        /* scan thermal_zone* for matching type */
+        char thermal_dir[SYSFS_PATH_MAX];
+        snprintf(thermal_dir, sizeof(thermal_dir), THERMAL_PATH, sysfs_root());
+        DIR *dir = opendir(thermal_dir);
         if (!dir) return 0;
         struct dirent *e;
         while ((e = readdir(dir)) != NULL) {
             if (strncmp(e->d_name, "thermal_zone", 12) != 0) continue;
             char type_path[512];
-            snprintf(type_path, sizeof(type_path), "/sys/class/thermal/%s/type", e->d_name);
+            snprintf(type_path, sizeof(type_path), THERMAL_PATH "/%s/type", sysfs_root(), e->d_name);
             FILE *tf = fopen(type_path, "r");
             if (!tf) continue;
             char type_name[64];
@@ -115,9 +125,10 @@ static int resolve_sensor(const char *spec, char *out_path, size_t out_sz, bool 
             fclose(tf);
             if (!ok) continue;
             type_name[strcspn(type_name, "\r\n")] = '\0';
-            if (verbose) printf("             : /sys/class/thermal/%s  type=%s\n", e->d_name, type_name);
+            if (verbose) printf("             : %s/class/thermal/%s  type=%s\n",
+                                sysfs_root(), e->d_name, type_name);
             if (strcmp(type_name, label) == 0) {
-                snprintf(out_path, out_sz, "/sys/class/thermal/%s/temp", e->d_name);
+                snprintf(out_path, out_sz, THERMAL_PATH "/%s/temp", sysfs_root(), e->d_name);
                 closedir(dir);
                 return 1;
             }
@@ -127,25 +138,29 @@ static int resolve_sensor(const char *spec, char *out_path, size_t out_sz, bool 
     }
 
     /* hwmon driver scan */
-    DIR *dir = opendir("/sys/class/hwmon");
+    char hwmon_dir[SYSFS_PATH_MAX];
+    snprintf(hwmon_dir, sizeof(hwmon_dir), HWMON_PATH, sysfs_root());
+    DIR *dir = opendir(hwmon_dir);
     if (!dir) return 0;
     struct dirent *e;
     while ((e = readdir(dir)) != NULL) {
         if (strncmp(e->d_name, "hwmon", 5) != 0) continue;
         char name_path[512], name[64];
-        snprintf(name_path, sizeof(name_path), "/sys/class/hwmon/%s/name", e->d_name);
+        snprintf(name_path, sizeof(name_path), HWMON_PATH "/%s/name", sysfs_root(), e->d_name);
         FILE *nf = fopen(name_path, "r");
         if (!nf) continue;
         int ok = (fgets(name, sizeof(name), nf) != NULL);
         fclose(nf);
         if (!ok) continue;
         name[strcspn(name, "\r\n")] = '\0';
-        if (verbose) printf("             : /sys/class/hwmon/%s  driver=%s\n", e->d_name, name);
+        if (verbose) printf("             : %s/class/hwmon/%s  driver=%s\n",
+                            sysfs_root(), e->d_name, name);
         if (strcmp(name, driver) != 0) continue;
         /* driver matches — find label */
         for (int n = 1; n <= 16; n++) {
             char lpath[512], lname[64];
-            snprintf(lpath, sizeof(lpath), "/sys/class/hwmon/%s/temp%d_label", e->d_name, n);
+            snprintf(lpath, sizeof(lpath), HWMON_PATH "/%s/temp%d_label",
+                     sysfs_root(), e->d_name, n);
             FILE *lf = fopen(lpath, "r");
             if (!lf) continue;
             ok = (fgets(lname, sizeof(lname), lf) != NULL);
@@ -153,13 +168,14 @@ static int resolve_sensor(const char *spec, char *out_path, size_t out_sz, bool 
             if (!ok) continue;
             lname[strcspn(lname, "\r\n")] = '\0';
             if (strcmp(lname, label) == 0) {
-                snprintf(out_path, out_sz, "/sys/class/hwmon/%s/temp%d_input", e->d_name, n);
+                snprintf(out_path, out_sz, HWMON_PATH "/%s/temp%d_input",
+                         sysfs_root(), e->d_name, n);
                 closedir(dir);
                 return 1;
             }
         }
         /* no label file — fall back to temp1_input for this driver */
-        snprintf(out_path, out_sz, "/sys/class/hwmon/%s/temp1_input", e->d_name);
+        snprintf(out_path, out_sz, HWMON_PATH "/%s/temp1_input", sysfs_root(), e->d_name);
         closedir(dir);
         return 1;
     }
@@ -186,7 +202,8 @@ static int hwmon_find_cpu_input(const char *hwmon_name, char *out_path, size_t o
     char fallback[512] = "";
     for (int n = 1; n <= 16; n++) {
         char ipath[512];
-        snprintf(ipath, sizeof(ipath), "/sys/class/hwmon/%s/temp%d_input", hwmon_name, n);
+        snprintf(ipath, sizeof(ipath), HWMON_PATH "/%s/temp%d_input",
+                 sysfs_root(), hwmon_name, n);
         if (access(ipath, F_OK) != 0) continue;
         int milli = 0;
         if (!read_millidegrees(ipath, &milli)) continue;
@@ -196,7 +213,8 @@ static int hwmon_find_cpu_input(const char *hwmon_name, char *out_path, size_t o
             snprintf(fallback, sizeof(fallback), "%s", ipath);
 
         char lpath[512], label[64] = "";
-        snprintf(lpath, sizeof(lpath), "/sys/class/hwmon/%s/temp%d_label", hwmon_name, n);
+        snprintf(lpath, sizeof(lpath), HWMON_PATH "/%s/temp%d_label",
+                 sysfs_root(), hwmon_name, n);
         FILE *lf = fopen(lpath, "r");
         if (lf) {
             if (fgets(label, sizeof(label), lf)) label[strcspn(label, "\r\n")] = '\0';
@@ -226,15 +244,18 @@ static int auto_detect(char *out_path, size_t out_sz, bool verbose) {
     int best_rank = -1;
     char best_path[512] = "";
 
-    if (verbose) printf("  Detection  : scanning /sys/class/thermal/thermal_zone* ...\n");
+    if (verbose) printf("  Detection  : scanning %s/class/thermal/thermal_zone* ...\n",
+                        sysfs_root());
 
-    DIR *dir = opendir("/sys/class/thermal");
+    char thermal_dir[SYSFS_PATH_MAX];
+    snprintf(thermal_dir, sizeof(thermal_dir), THERMAL_PATH, sysfs_root());
+    DIR *dir = opendir(thermal_dir);
     if (dir) {
         struct dirent *e;
         while ((e = readdir(dir)) != NULL) {
             if (strncmp(e->d_name, "thermal_zone", 12) != 0) continue;
             char type_path[512];
-            snprintf(type_path, sizeof(type_path), "/sys/class/thermal/%s/type", e->d_name);
+            snprintf(type_path, sizeof(type_path), THERMAL_PATH "/%s/type", sysfs_root(), e->d_name);
             FILE *tf = fopen(type_path, "r");
             if (!tf) continue;
             char type_name[128];
@@ -249,7 +270,7 @@ static int auto_detect(char *out_path, size_t out_sz, bool verbose) {
             else if (strcmp(type_name, "acpitz") == 0)                     rank = 1;
 
             char temp_path[512];
-            snprintf(temp_path, sizeof(temp_path), "/sys/class/thermal/%s/temp", e->d_name);
+            snprintf(temp_path, sizeof(temp_path), THERMAL_PATH "/%s/temp", sysfs_root(), e->d_name);
             int milli = 0;
             int valid = read_millidegrees(temp_path, &milli) && sensor_reading_valid(milli);
 
@@ -265,15 +286,17 @@ static int auto_detect(char *out_path, size_t out_sz, bool verbose) {
         closedir(dir);
     }
 
-    if (verbose) printf("             : scanning /sys/class/hwmon/*/name ...\n");
+    if (verbose) printf("             : scanning %s/class/hwmon/*/name ...\n", sysfs_root());
 
-    DIR *hdir = opendir("/sys/class/hwmon");
+    char hwmon_dir[SYSFS_PATH_MAX];
+    snprintf(hwmon_dir, sizeof(hwmon_dir), HWMON_PATH, sysfs_root());
+    DIR *hdir = opendir(hwmon_dir);
     if (hdir) {
         struct dirent *e;
         while ((e = readdir(hdir)) != NULL) {
             if (strncmp(e->d_name, "hwmon", 5) != 0) continue;
             char name_path[512], name[64];
-            snprintf(name_path, sizeof(name_path), "/sys/class/hwmon/%s/name", e->d_name);
+            snprintf(name_path, sizeof(name_path), HWMON_PATH "/%s/name", sysfs_root(), e->d_name);
             FILE *nf = fopen(name_path, "r");
             if (!nf) continue;
             int ok = (fgets(name, sizeof(name), nf) != NULL);
@@ -355,7 +378,7 @@ bool get_cpu_temperature_sensor_path(const char *config_path, bool config_primar
                 }
             }
             /* ultimate fallback */
-            snprintf(out_path, out_sz, "/sys/class/thermal/thermal_zone0/temp");
+            snprintf(out_path, out_sz, THERMAL_PATH "/thermal_zone0/temp", sysfs_root());
             if (verbose) printf("  Fallback   : %s\n", out_path);
         }
     }
@@ -417,12 +440,15 @@ static void print_optional_temp_file(const char *label, const char *path) {
 static void print_thermal_trip_points(const char *zone_name) {
     for (int n = 0; n < 16; n++) {
         char type_path[SYSFS_PATH_MAX], temp_path[SYSFS_PATH_MAX], hyst_path[SYSFS_PATH_MAX], type_name[64];
-        snprintf(type_path, sizeof(type_path), "/sys/class/thermal/%s/trip_point_%d_type", zone_name, n);
+        snprintf(type_path, sizeof(type_path), THERMAL_PATH "/%s/trip_point_%d_type",
+                 sysfs_root(), zone_name, n);
         if (access(type_path, F_OK) != 0) continue;
         if (!read_text_line(type_path, type_name, sizeof(type_name))) continue;
 
-        snprintf(temp_path, sizeof(temp_path), "/sys/class/thermal/%s/trip_point_%d_temp", zone_name, n);
-        snprintf(hyst_path, sizeof(hyst_path), "/sys/class/thermal/%s/trip_point_%d_hyst", zone_name, n);
+        snprintf(temp_path, sizeof(temp_path), THERMAL_PATH "/%s/trip_point_%d_temp",
+                 sysfs_root(), zone_name, n);
+        snprintf(hyst_path, sizeof(hyst_path), THERMAL_PATH "/%s/trip_point_%d_hyst",
+                 sysfs_root(), zone_name, n);
 
         int milli = 0;
         if (read_millidegrees(temp_path, &milli)) {
@@ -440,20 +466,22 @@ static void print_temperatures(int cpu_only, int detailed) {
     int found_thermal = 0;
     int found_hwmon = 0;
 
-    DIR *dir = opendir("/sys/class/thermal");
+    char thermal_dir[SYSFS_PATH_MAX];
+    snprintf(thermal_dir, sizeof(thermal_dir), THERMAL_PATH, sysfs_root());
+    DIR *dir = opendir(thermal_dir);
     if (dir) {
         struct dirent *e;
         while ((e = readdir(dir)) != NULL) {
             if (strncmp(e->d_name, "thermal_zone", 12) != 0) continue;
 
             char type_path[SYSFS_PATH_MAX], type_name[128];
-            snprintf(type_path, sizeof(type_path), "/sys/class/thermal/%s/type", e->d_name);
+            snprintf(type_path, sizeof(type_path), THERMAL_PATH "/%s/type", sysfs_root(), e->d_name);
             if (!read_text_line(type_path, type_name, sizeof(type_name))) continue;
 
             if (cpu_only && !is_cpu_related_thermal(type_name)) continue;
 
             char temp_path[SYSFS_PATH_MAX];
-            snprintf(temp_path, sizeof(temp_path), "/sys/class/thermal/%s/temp", e->d_name);
+            snprintf(temp_path, sizeof(temp_path), THERMAL_PATH "/%s/temp", sysfs_root(), e->d_name);
             int milli = 0;
             if (!read_millidegrees(temp_path, &milli)) continue;
 
@@ -469,25 +497,29 @@ static void print_temperatures(int cpu_only, int detailed) {
         closedir(dir);
     }
 
-    DIR *hdir = opendir("/sys/class/hwmon");
+    char hwmon_dir[SYSFS_PATH_MAX];
+    snprintf(hwmon_dir, sizeof(hwmon_dir), HWMON_PATH, sysfs_root());
+    DIR *hdir = opendir(hwmon_dir);
     if (hdir) {
         struct dirent *e;
         while ((e = readdir(hdir)) != NULL) {
             if (strncmp(e->d_name, "hwmon", 5) != 0) continue;
 
             char name_path[SYSFS_PATH_MAX], name[64];
-            snprintf(name_path, sizeof(name_path), "/sys/class/hwmon/%s/name", e->d_name);
+            snprintf(name_path, sizeof(name_path), HWMON_PATH "/%s/name", sysfs_root(), e->d_name);
             if (!read_text_line(name_path, name, sizeof(name))) continue;
 
             if (cpu_only && !is_cpu_related_hwmon(name)) continue;
 
             for (int n = 1; n <= 16; n++) {
                 char ipath[SYSFS_PATH_MAX];
-                snprintf(ipath, sizeof(ipath), "/sys/class/hwmon/%s/temp%d_input", e->d_name, n);
+                snprintf(ipath, sizeof(ipath), HWMON_PATH "/%s/temp%d_input",
+                         sysfs_root(), e->d_name, n);
                 if (access(ipath, F_OK) != 0) continue;
 
                 char lpath[SYSFS_PATH_MAX], label[64] = "";
-                snprintf(lpath, sizeof(lpath), "/sys/class/hwmon/%s/temp%d_label", e->d_name, n);
+                snprintf(lpath, sizeof(lpath), HWMON_PATH "/%s/temp%d_label",
+                         sysfs_root(), e->d_name, n);
                 read_text_line(lpath, label, sizeof(label));
 
                 int milli = 0;
@@ -506,9 +538,11 @@ static void print_temperatures(int cpu_only, int detailed) {
 
                 if (detailed) {
                     char path[SYSFS_PATH_MAX];
-                    snprintf(path, sizeof(path), "/sys/class/hwmon/%s/temp%d_max", e->d_name, n);
+                    snprintf(path, sizeof(path), HWMON_PATH "/%s/temp%d_max",
+                             sysfs_root(), e->d_name, n);
                     print_optional_temp_file("max ", path);
-                    snprintf(path, sizeof(path), "/sys/class/hwmon/%s/temp%d_crit", e->d_name, n);
+                    snprintf(path, sizeof(path), HWMON_PATH "/%s/temp%d_crit",
+                             sysfs_root(), e->d_name, n);
                     print_optional_temp_file("crit", path);
                 }
             }

@@ -54,12 +54,20 @@ everything with:
 
 ```bash
 make            # builds all utilities
+make test       # runs hardware-independent cpu_temp fixture tests
 make check      # build + smoke-test every binary (exit-code check)
 make install    # install to ~/.local/bin (override: make install PREFIX=/usr/local)
 make uninstall  # remove installed binaries
 make plot       # re-generate PNG plot from all CSVs in results/ (needs gnuplot)
 make clean      # removes binaries and object files
 ```
+
+`make test` exercises temperature sensor selection against committed fake sysfs
+trees, so it does not depend on the host's thermal hardware. The fixtures cover
+the sensor ranking, implausible-reading rejection, config-primary and
+config-fallback behavior, and the final `thermal_zone0` fallback. The test
+temporarily sets `CPU_TEMP_SYSFS_ROOT`; production commands use `/sys` unless
+that variable is explicitly set.
 
 **Prerequisites**
 

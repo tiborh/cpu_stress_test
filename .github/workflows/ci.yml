@@ -10,6 +10,7 @@ on:
       - 'Makefile'
       - 'check_build_deps.sh'
       - 'results/**'
+      - 'tests/**'
       - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
@@ -20,6 +21,7 @@ on:
       - 'Makefile'
       - 'check_build_deps.sh'
       - 'results/**'
+      - 'tests/**'
       - '.github/workflows/ci.yml'
 
 jobs:

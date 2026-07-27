@@ -6,6 +6,7 @@ cpu_id
 timestamp
 plot_temp
 list_temps
+tests/test_cpu_temp
 
 # Ignore compiled object files
 *.o

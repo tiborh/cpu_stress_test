@@ -12,6 +12,7 @@ exist on macOS, Windows, or BSD.
 
 ```bash
 make                 # build all utilities
+make test            # run hardware-independent cpu_temp fixture tests
 make check           # build + smoke-test every binary
 make install         # install to ~/.local/bin (PREFIX= overridable)
 make uninstall       # remove from ~/.local/bin

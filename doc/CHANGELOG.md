@@ -11,6 +11,10 @@ date. The most recent changes are listed first.
 ## Unreleased
 
 ### Added
+- **`make test` target with hardware-independent `cpu_temp` tests.** Committed
+  fake sysfs trees cover sensor ranking, invalid ACPI sentinel rejection,
+  config precedence, and the final fallback without relying on the host's
+  thermal hardware.
 - **`make install` / `make uninstall` targets.** Installs all binaries to
   `~/.local/bin` by default; overridable via `PREFIX=`. Uses `install(1)` with
   proper permissions (755).

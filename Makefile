@@ -3,6 +3,7 @@ CFLAGS = -O2 -Wall -Wextra -Wpedantic -fstack-protector-strong -D_FORTIFY_SOURCE
 LDFLAGS = -Wl,-z,relro,-z,now
 
 TARGETS = cpu_stress cpu_cores cpu_temp cpu_id timestamp plot_temp list_temps
+TEST_TARGET = tests/test_cpu_temp
 
 # Object files built from library modules
 OBJS = cpu_temp.o cpu_id.o timestamp.o
@@ -38,6 +39,13 @@ list_temps: list_temps_tool.c cpu_temp.o cpu_id.o
 # ── Include auto-generated dependency files ───────────────────────────────────
 -include $(OBJS:.o=.d)
 
+# ── Tests ──────────────────────────────────────────────────────────────────────
+$(TEST_TARGET): tests/test_cpu_temp.c cpu_temp.c cpu_temp.h cpu_id.c cpu_id.h
+	$(CC) $(CFLAGS) tests/test_cpu_temp.c cpu_temp.c cpu_id.c -o $@ $(LDFLAGS)
+
+test: $(TEST_TARGET)
+	./$(TEST_TARGET)
+
 # ── Install / Uninstall ───────────────────────────────────────────────────────
 PREFIX ?= $(HOME)/.local
 
@@ -49,7 +57,7 @@ uninstall:
 	cd $(PREFIX)/bin && rm -f $(TARGETS)
 
 # ── Smoke tests ───────────────────────────────────────────────────────────────
-check: all
+check: all test
 	@echo "=== Smoke tests ==="
 	@fail=0; \
 	for t in $(TARGETS); do \
@@ -92,4 +100,4 @@ plot: plot_temp
 
 # ── Clean ─────────────────────────────────────────────────────────────────────
 clean:
-	rm -f $(TARGETS) *.o *.d
+	rm -f $(TARGETS) $(TEST_TARGET) *.o *.d
