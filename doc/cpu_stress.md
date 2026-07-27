@@ -68,8 +68,10 @@ real gnuplot installation. The temperature fixtures cover sensor ranking,
 implausible-reading rejection, config-primary/config-fallback behavior, and the
 final `thermal_zone0` fallback. The plot fixtures cover valid averaging, missing
 (`N/A`) samples, mixed polling intervals, malformed headers, and malformed file
-names. The temperature test temporarily sets `CPU_TEMP_SYSFS_ROOT`; production
-commands use `/sys` unless that variable is explicitly set.
+names. The stress fixture sends `SIGINT` and `SIGTERM` during an active run and
+verifies that its CSV is closed before the process exits. The temperature and
+stress tests temporarily set `CPU_TEMP_SYSFS_ROOT`; production commands use
+`/sys` unless that variable is explicitly set.
 
 **Prerequisites**
 
@@ -191,7 +193,7 @@ graph TD
     E --> G[Get & Print Initial Temp]
     F --> G
     G --> H[Main Thread: sleep 1s & print CPU Temp]
-    H --> I{Duration elapsed?}
+    H --> I{Duration elapsed or termination signal?}
     I -- No --> H
     I -- Yes --> J[Request worker cancellation]
     J --> K[Join/Wait for N worker cleanup handlers]
@@ -215,6 +217,11 @@ cancellation point in `read`; the `math` worker explicitly calls
 `pthread_testcancel` every 16,384 loop iterations. Cleanup handlers close the
 `/dev/urandom` descriptor and print the worker shutdown message, including when
 the cancellation arrives during `read`.
+
+`SIGINT` and `SIGTERM` are handled by recording the signal in a
+`sig_atomic_t`; the signal handler does not perform I/O, cancellation, or file
+operations. The main monitoring loop observes that value, cancels and joins the
+workers, flushes and closes the CSV log, and exits with status `128 + signal`.
 
 #### 3. Core Worker Routines
 

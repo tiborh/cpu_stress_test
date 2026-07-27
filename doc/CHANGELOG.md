@@ -24,6 +24,10 @@ date. The most recent changes are listed first.
 - `*.png` added to `.gitignore` to prevent generated plots from being tracked.
 
 ### Changed
+- **Interrupted stress runs now clean up predictably.** `cpu_stress` records
+  `SIGINT` and `SIGTERM`, then its main thread cancels and joins workers and
+  closes the CSV before exiting with status `128 + signal`. Fixture tests cover
+  both signals without depending on host thermal hardware.
 - **CSV parsing now has regression coverage and a strict compatibility
   contract.** `make test` validates filename parsing, headers, `N/A` samples,
   averaging, and mixed polling intervals with fake gnuplot fixtures.

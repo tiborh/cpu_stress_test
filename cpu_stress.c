@@ -7,12 +7,34 @@
 #include <fcntl.h>
 #include <string.h>
 #include <stdbool.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <errno.h>
 #include "cpu_temp.h"
 #include "cpu_id.h"
 #include "timestamp.h"
+
+static volatile sig_atomic_t termination_signal = 0;
+
+static void request_termination(int signal_number) {
+    termination_signal = signal_number;
+}
+
+static int install_signal_handlers(void) {
+    struct sigaction action;
+    memset(&action, 0, sizeof(action));
+    action.sa_handler = request_termination;
+    if (sigemptyset(&action.sa_mask) != 0) {
+        perror("sigemptyset");
+        return 0;
+    }
+    if (sigaction(SIGINT, &action, NULL) != 0 || sigaction(SIGTERM, &action, NULL) != 0) {
+        perror("sigaction");
+        return 0;
+    }
+    return 1;
+}
 
 static void print_worker_stopped(void *arg) {
     printf("[Thread %d] Stopped.\n", *(int *)arg);
@@ -168,6 +190,8 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
+    if (!install_signal_handlers()) return EXIT_FAILURE;
+
     printf("Starting stress test on %d cores for %d seconds using '%s' method (polling every %ds)...\n", 
            num_cores, duration, use_math ? "math" : "urandom", poll_interval);
 
@@ -196,6 +220,13 @@ int main(int argc, char* argv[]) {
             free(threads);
             free(thread_ids);
             return EXIT_FAILURE;
+        }
+        if (termination_signal != 0) {
+            printf("Interrupted by signal %d. Stopping workers...\n", termination_signal);
+            int worker_cleanup_failed = cancel_and_join_threads(threads, i + 1);
+            free(threads);
+            free(thread_ids);
+            return worker_cleanup_failed ? EXIT_FAILURE : 128 + termination_signal;
         }
     }
 
@@ -232,9 +263,10 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Let the threads run for the user-specified period of time, checking temp periodically
-    for (int sec = 0; sec < duration; sec++) {
+    // Let the threads run for the user-specified period of time, checking temp periodically.
+    for (int sec = 0; sec < duration && termination_signal == 0; sec++) {
         sleep(1);
+        if (termination_signal != 0) break;
         int elapsed = sec + 1;
         if (elapsed % poll_interval == 0 || elapsed == duration) {
             double temp = get_cpu_temperature(NULL, false, false);
@@ -258,7 +290,11 @@ int main(int argc, char* argv[]) {
     }
 
     // Request deferred cancellation, then wait for all worker cleanup handlers.
-    printf("Duration elapsed. Stopping threads...\n");
+    if (termination_signal != 0) {
+        printf("Interrupted by signal %d. Stopping workers...\n", termination_signal);
+    } else {
+        printf("Duration elapsed. Stopping threads...\n");
+    }
     int worker_cleanup_failed = cancel_and_join_threads(threads, num_cores);
 
     if (csv_file) {
@@ -270,5 +306,6 @@ int main(int argc, char* argv[]) {
 
     free(threads);
     free(thread_ids);
-    return worker_cleanup_failed ? EXIT_FAILURE : EXIT_SUCCESS;
+    if (worker_cleanup_failed) return EXIT_FAILURE;
+    return termination_signal == 0 ? EXIT_SUCCESS : 128 + termination_signal;
 }

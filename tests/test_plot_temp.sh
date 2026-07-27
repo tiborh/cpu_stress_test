@@ -3,7 +3,13 @@
 set -euo pipefail
 
 plot_temp=${1:?Usage: test_plot_temp.sh <plot_temp_binary>}
-fixture_dir="tests/fixtures/plot_temp"
+invocation_dir=$(pwd)
+case "$plot_temp" in
+    /*) ;;
+    *) plot_temp="$invocation_dir/$plot_temp" ;;
+esac
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+fixture_dir="$script_dir/fixtures/plot_temp"
 workdir=$(mktemp -d)
 trap 'rm -rf "$workdir"' EXIT
 
