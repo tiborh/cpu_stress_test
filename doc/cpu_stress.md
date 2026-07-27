@@ -73,6 +73,12 @@ verifies that its CSV is closed before the process exits. The temperature and
 stress tests temporarily set `CPU_TEMP_SYSFS_ROOT`; production commands use
 `/sys` unless that variable is explicitly set.
 
+The plot and interruption tests can also run directly with a built binary:
+`./tests/test_plot_temp.sh ./plot_temp` and
+`./tests/test_cpu_stress_signal.sh ./cpu_stress`. Each script resolves its
+fixtures from its own location, so the equivalent commands also work from
+`tests/` when passed `../plot_temp` or `../cpu_stress`.
+
 **Prerequisites**
 
 | Requirement | Debian/Ubuntu package | Arch/Manjaro package | Fedora/openSUSE (RPM) package | Needed for |

@@ -64,6 +64,8 @@ See [doc/cpu_stress.md](doc/cpu_stress.md) for full per-utility details.
 | `security_audit.sh` | Static + dynamic security audit producing a pass/fail/warn report |
 | `doc_audit.sh` | AI-powered documentation completeness audit (dry-run by default; `--run` to invoke AI). **Only tested with kiro-cli**; other backends (codex, gemini, copilot) are detected but unvalidated. |
 | `test_full.sh` | Full local test suite including hardware-dependent tests (`--quick` to skip stress test) |
+| `tests/test_plot_temp.sh` | Fixture-based CSV parsing and aggregation tests using a fake gnuplot |
+| `tests/test_cpu_stress_signal.sh` | Fixture-based SIGINT/SIGTERM cleanup tests for `cpu_stress` |
 
 ## Layout
 
